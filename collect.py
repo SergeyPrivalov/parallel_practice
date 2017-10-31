@@ -1,7 +1,7 @@
 #!/bin/env python
+import collections
 
 d = {}
-
 
 with open('hh1.dat') as f:
     for line in f:
@@ -24,7 +24,8 @@ with open('f_2sq_cl.dat') as f:
         d[(round(xs[0]), round(xs[1]))] = (d[(round(xs[0]), round(xs[1]))],  xs[2])
         
 with open('data.txt', 'w') as f:
-    for key, val in d.items():
+    od = collections.OrderedDict(sorted(d.items()))
+    for key in od:
         (x, y) = key
-        (((h1, h2), f1), f2) = val
+        (((h1, h2), f1), f2) = d[key]
         print(x, y, h1, h2, f1, f2, file=f)

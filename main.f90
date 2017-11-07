@@ -8,6 +8,8 @@ real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
 real XPrev(N*N), XNext(N*N), YCur(N*N)
 real norm, maxL
 
+real alpha = 0.001
+
 open(4, FILE="data.txt")
 
 do i = 1,N
@@ -36,7 +38,22 @@ enddo
 !
 !  A^T * A
 !
+do i = 1,N*N
+	do j = 1, N*N
+		ATA(i,j) = 0
+		do k = 1, N*N
+			ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
+		enddo
+		if (i .eq. j) then
+			ATA(i,j) = ATA(i,j) + alpha
+		endif
+	enddo
+enddo
+
+
+
 ! собств значения
+
 
 
 norm = 1

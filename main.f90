@@ -1,11 +1,12 @@
 program main
 
-real cf
-parameter (cf = 0.00667)
+real cf, eps
+parameter (cf = 0.00667, eps = 0.1)
 parameter (N=50)
 parameter (dx = 204, dy = 204)
 real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
-
+real XPrev(N*N), XNext(N*N), YCur(N*N)
+real norm
 
 open(4, FILE="data.txt")
 
@@ -35,8 +36,40 @@ enddo
 !
 !  A^T * A
 !
+! собств значения
 
 
+norm = 1
+do i =1,N*N
+    if (i eq 1) then
+        XPrev(i) = 1
+    else
+        XPrev(i) = 0
+    endif
+enddo 
+
+
+do while (norm > eps)
+    norm = 0
+    do i = 1, N*N
+        YCur(i) = 0
+        do j =1, N*N
+            YCur(i) = YCur(i) + A(i,j) * XPrev(j)
+        enddo
+        norm = norm + YCur(i)**2
+    enddo
+    norm = sqrt(norm)
+
+    for i =1, N*N
+        XNext(i) = YCur(i) / norm
+    enddo
+    
+    norm = 0
+    for i = 1, N*N
+        norm = norm + (XNext(i) - XPrev(i)) ** 2
+    enddo
+    norm = sqrt(norm)
+enddo
 
 
 open(5, FILE='A.txt')

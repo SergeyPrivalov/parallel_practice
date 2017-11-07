@@ -6,7 +6,7 @@ parameter (N=50)
 parameter (dx = 204, dy = 204)
 real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
 real XPrev(N*N), XNext(N*N), YCur(N*N)
-real norm
+real norm, maxL
 
 open(4, FILE="data.txt")
 
@@ -41,7 +41,7 @@ enddo
 
 norm = 1
 do i =1,N*N
-    if (i eq 1) then
+    if (i .eq. 1) then
         XPrev(i) = 1
     else
         XPrev(i) = 0
@@ -59,17 +59,24 @@ do while (norm > eps)
         norm = norm + YCur(i)**2
     enddo
     norm = sqrt(norm)
+    maxL = norm
 
-    for i =1, N*N
+    do i = 1, N*N
         XNext(i) = YCur(i) / norm
     enddo
     
     norm = 0
-    for i = 1, N*N
+    do i = 1, N*N
         norm = norm + (XNext(i) - XPrev(i)) ** 2
     enddo
     norm = sqrt(norm)
+    
+    do i = 1, N*N
+	XPrev(i) = XNext(i)
+    enddo
 enddo
+
+WRITE(*, *) maxL
 
 
 open(5, FILE='A.txt')

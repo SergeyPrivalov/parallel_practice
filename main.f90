@@ -8,7 +8,8 @@ real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
 real XPrev(N*N), XNext(N*N), YCur(N*N)
 real norm, maxL
 
-real alpha = 0.001
+real alpha
+alpha = 0.001
 
 open(4, FILE="data.txt")
 
@@ -38,18 +39,18 @@ enddo
 !
 !  A^T * A
 !
-do i = 1,N*N
-	do j = 1, N*N
-		ATA(i,j) = 0
-		do k = 1, N*N
-			ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
-		enddo
-		if (i .eq. j) then
-			ATA(i,j) = ATA(i,j) + alpha
-		endif
-	enddo
-enddo
 
+do i = 1,N*N
+    do j = 1, N*N
+        ATA(i,j) = 0
+        do k = 1, N*N
+                ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
+        enddo
+        if (i .eq. j) then
+                ATA(i,j) = ATA(i,j) + alpha
+        endif
+    enddo
+enddo
 
 
 ! собств значения
@@ -72,7 +73,7 @@ do while (norm > eps)
     do i = 1, N*N
         YCur(i) = 0
         do j =1, N*N
-            YCur(i) = YCur(i) + A(i,j) * XPrev(j)
+            YCur(i) = YCur(i) + ATA(i,j) * XPrev(j)
         enddo
         norm = norm + YCur(i)**2
     enddo
@@ -90,9 +91,9 @@ do while (norm > eps)
     norm = sqrt(norm)
     
     do i = 1, N*N
-	XPrev(i) = XNext(i)
+        XPrev(i) = XNext(i)
     enddo
-    write(6,*) k, maxL, norm
+    write(*,*) k, maxL, norm
     k = k + 1
 enddo
 

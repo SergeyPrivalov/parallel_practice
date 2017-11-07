@@ -1,7 +1,7 @@
 program main
 
 real cf, eps
-parameter (cf = 0.00667, eps = 0.1)
+parameter (cf = 0.00667, eps = 0.001)
 parameter (N=50)
 parameter (dx = 204, dy = 204)
 real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
@@ -48,7 +48,8 @@ do i =1,N*N
     endif
 enddo 
 
-
+open(6, FILE='maxL.txt')
+k = 0
 do while (norm > eps)
     norm = 0
     do i = 1, N*N
@@ -60,7 +61,7 @@ do while (norm > eps)
     enddo
     norm = sqrt(norm)
     maxL = norm
-
+    
     do i = 1, N*N
         XNext(i) = YCur(i) / norm
     enddo
@@ -74,6 +75,8 @@ do while (norm > eps)
     do i = 1, N*N
 	XPrev(i) = XNext(i)
     enddo
+    write(6,*) k, maxL, norm
+    k = k + 1
 enddo
 
 WRITE(*, *) maxL

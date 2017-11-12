@@ -4,7 +4,7 @@ real cf, eps
 parameter (cf = 0.00667, eps = 0.001)
 parameter (N=50)
 parameter (dx = 204, dy = 204)
-real A(N*N, N*N), ATA(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
+real A(N*N, N*N), ATA(N*N, N*N), ATAB(N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N), ZNext(N*N), ZPrev(N*N)
 real XPrev(N*N), XNext(N*N), YCur(N*N)
 real norm, maxL
 
@@ -37,33 +37,42 @@ enddo
 
 
 !
-!  A^T * A
+!  A^T * A + alpha * E
 !
 
 do i = 1,N*N
     do j = 1, N*N
         ATA(i,j) = 0
         do k = 1, N*N
-                ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
+            ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
         enddo
         if (i .eq. j) then
-                ATA(i,j) = ATA(i,j) + alpha
+            ATA(i,j) = ATA(i,j) + alpha
         endif
     enddo
 enddo
 
+!
+!  A^T*b
+!
+
+do i = 1,N*N
+    ATAB(i) = 0
+    do j = 1,N*N
+        ATAB(i) = ATAB(i) + A(j,i)*F(j / 50, j % 50)
+    enddo
+enddo
 
 ! собств значения
 
-
-
 norm = 1
-do i =1,N*N
+do i = 1,N*N
     if (i .eq. 1) then
         XPrev(i) = 1
     else
         XPrev(i) = 0
     endif
+    ZPrev(i) = 0
 enddo 
 
 open(6, FILE='maxL.txt')
@@ -98,6 +107,22 @@ do while (norm > eps)
 enddo
 
 WRITE(*, *) maxL
+
+
+!
+!      считаем z
+!
+
+do while ()
+    do i = 1, N*N
+        ZNext(i) = 0
+        do j = 1, N*N
+            ZNext(i) = ZNext(i) + ATA(i,j)*ZPrev(j) - ATAB(j)
+        enddo
+        ZNext(i) = ZPrev(i) - ZNext(i) / maxL
+        ZPrev(i) = ZNext(i)
+    enddo
+enddo
 
 
 open(5, FILE='A.txt')

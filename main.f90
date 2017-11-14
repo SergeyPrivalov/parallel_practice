@@ -18,7 +18,7 @@ real XPrev(N*N), XNext(N*N), YCur(N*N), norm, maxL
 ! для метода
 real ZNext(N*N), ZPrev(N*N), alpha, az, nevyaz, normB
 ! коэфициент регуляризации
-alpha = 0.001 
+alpha = 0.01
 
 ! input
 open(4, FILE="data.txt")
@@ -27,6 +27,7 @@ do i = 1,N
         READ(4,*) X(i,j), Y(i,j), H1(i,j), H2(i,j), B(i,j)
     enddo
 enddo
+write(*,*) "Readed data"
 
 ! вычисление матрицы A
 do k = 1,N
@@ -44,6 +45,7 @@ do k = 1,N
         
     enddo
 enddo
+write(*,*) "calced A"
 
 !  A^T * A 
 do i = 1,N*N
@@ -54,6 +56,7 @@ do i = 1,N*N
         enddo
     enddo
 enddo
+write(*,*) "calced A^T*A"
 
 !  A^T*b
 do k = 1,N
@@ -66,6 +69,7 @@ do k = 1,N
         enddo
     enddo
 enddo
+write(*,*) "calced A^T*b"
 
 
 !  norm b
@@ -76,6 +80,7 @@ do k = 1,N
     enddo
 enddo
 normB = sqrt(normB)
+write(*,*) "calced normB ", normB
 
 ! maxL иницилизация
 norm = 1
@@ -118,6 +123,7 @@ do while (norm > eps)
     write(6,*) k, maxL, norm
     k = k + 1
 enddo
+write(*,*) "calced maxL"
 
 
 ! решение, инициализация
@@ -128,11 +134,13 @@ enddo
 !
 !      считаем z
 !
+open(7, FILE='nevayz.txt')
 nevyaz = 1
+k = 0
 do while (nevyaz > eps)
-    do i = 1, N*N
+    do i = 1,N*N
         ZNext(i) = 0
-        do j = 1, N*N
+        do j = 1,N*N
             if (i .eq. j) then
                 ZNext(i) = ZNext(i) + (ATA(i,j) + alpha)*ZPrev(j)
             else
@@ -142,25 +150,38 @@ do while (nevyaz > eps)
         ZNext(i) = ZPrev(i) - (ZNext(i) - ATB(i)) / maxL
     enddo
 
-    nevaz = 0
-    do i = N*N
+    nevyaz = 0
+    do i = 1,N*N
         az = 0
-        do j = N*N
-            az = az + A(i,j) * ZNext(j)
+        do j = 1,N*N
+            az = az + A(i,j) * ZPrev(j)
         enddo
-        az = az - B(i / N , MOD(i, N))
+        az = az - B(MOD(i-1, N) + 1, (i-1) / N + 1)
         nevyaz = nevyaz + az*az
     enddo
 
     nevyaz = sqrt(nevyaz) / normB
-
-
-
+    
+    write(7,*) k, nevyaz
+    
     do i = 1, N*N
         ZPrev(i) = ZNext(i)
     enddo
+    k = k + 1
 enddo
+write(*,*) "calced z"
 
+open(8, FILE='z.txt')
+do k = 1,N
+    do l = 1,N
+        write(8,*) X(k,l), Y(k,l), ZNext((l-1)*N+k)
+    enddo
+enddo
+   
+do i = 1,10
+    write(5, 10) (A(i, j), j = 1,10)
+    10     FORMAT(10F10.7, ' ')
+enddo
 
 ! вывод матрицы A.txt
 !20 open(5, FILE='A.txt')

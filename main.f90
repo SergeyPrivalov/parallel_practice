@@ -7,16 +7,16 @@ parameter (N=50)
 parameter (dx = 204, dy = 204)
 
 ! входные данные
-real A(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
+real A(N*N, N*N), H1(N, N), H2(N, N), B(N, N), X(N, N), Y(N, N)
 
 ! вспомогательные матрицы
-real ATA(N*N, N*N), ATAB(N*N)
+real ATA(N*N, N*N), ATB(N*N)
 
 ! для счета maxL 
 real XPrev(N*N), XNext(N*N), YCur(N*N), norm, maxL
 
 ! для метода
-real ZNext(N*N), ZPrev(N*N), alpha
+real ZNext(N*N), ZPrev(N*N), alpha, az, nevyaz, normB
 ! коэфициент регуляризации
 alpha = 0.001 
 
@@ -24,7 +24,7 @@ alpha = 0.001
 open(4, FILE="data.txt")
 do i = 1,N
     do j = 1,N
-        READ(4,*) X(i,j), Y(i,j), H1(i,j), H2(i,j), F(i,j)
+        READ(4,*) X(i,j), Y(i,j), H1(i,j), H2(i,j), B(i,j)
     enddo
 enddo
 
@@ -56,12 +56,26 @@ do i = 1,N*N
 enddo
 
 !  A^T*b
-!do i = 1,N*N
-    !ATAB(i) = 0
-    !do j = 1,N*N
-        !ATAB(i) = ATAB(i) + A(j,i)*F(j / 50, j % 50)
-    !enddo
-!enddo
+do k = 1,N
+    do l = 1,N
+        ATB((l-1)*N+k) = 0
+        do i = 1,N
+            do j = 1,N
+                ATB((l-1)*N+k) = ATB((l-1)*N+k) + A((i-1)*N+j,(l-1)*N+k)*B(i, j)
+            enddo
+        enddo
+    enddo
+enddo
+
+
+!  norm b
+normB = 0
+do k = 1,N
+    do l = 1,N
+        normB = normB + B(k,l)**2
+    enddo
+enddo
+normB = sqrt(normB)
 
 ! maxL иницилизация
 norm = 1
@@ -114,17 +128,38 @@ enddo
 !
 !      считаем z
 !
+nevyaz = 1
+do while (nevyaz > eps)
+    do i = 1, N*N
+        ZNext(i) = 0
+        do j = 1, N*N
+            if (i .eq. j) then
+                ZNext(i) = ZNext(i) + (ATA(i,j) + alpha)*ZPrev(j)
+            else
+                ZNext(i) = ZNext(i) + ATA(i,j)*ZPrev(j)
+            endif
+        enddo
+        ZNext(i) = ZPrev(i) - (ZNext(i) - ATB(i)) / maxL
+    enddo
 
-!do while ()
-    !do i = 1, N*N
-        !ZNext(i) = 0
-        !do j = 1, N*N
-            !ZNext(i) = ZNext(i) + ATA(i,j)*ZPrev(j) - ATAB(j)
-        !enddo
-        !ZNext(i) = ZPrev(i) - ZNext(i) / maxL
-        !ZPrev(i) = ZNext(i)
-    !enddo
-!enddo
+    nevaz = 0
+    do i = N*N
+        az = 0
+        do j = N*N
+            az = az + A(i,j) * ZNext(j)
+        enddo
+        az = az - B(i / N , MOD(i, N))
+        nevyaz = nevyaz + az*az
+    enddo
+
+    nevyaz = sqrt(nevyaz) / normB
+
+
+
+    do i = 1, N*N
+        ZPrev(i) = ZNext(i)
+    enddo
+enddo
 
 
 ! вывод матрицы A.txt

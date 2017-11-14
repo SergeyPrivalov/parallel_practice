@@ -1,24 +1,34 @@
 program main
 
+! константы
 real cf, eps
 parameter (cf = 0.00667, eps = 0.001)
 parameter (N=50)
 parameter (dx = 204, dy = 204)
-real A(N*N, N*N), ATA(N*N, N*N), ATAB(N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N), ZNext(N*N), ZPrev(N*N)
-real XPrev(N*N), XNext(N*N), YCur(N*N)
-real norm, maxL
 
-real alpha
-alpha = 0.001
+! входные данные
+real A(N*N, N*N), H1(N, N), H2(N, N), F(N, N), X(N, N), Y(N, N)
 
+! вспомогательные матрицы
+real ATA(N*N, N*N), ATAB(N*N)
+
+! для счета maxL 
+real XPrev(N*N), XNext(N*N), YCur(N*N), norm, maxL
+
+! для метода
+real ZNext(N*N), ZPrev(N*N), alpha
+! коэфициент регуляризации
+alpha = 0.001 
+
+! input
 open(4, FILE="data.txt")
-
 do i = 1,N
     do j = 1,N
         READ(4,*) X(i,j), Y(i,j), H1(i,j), H2(i,j), F(i,j)
     enddo
 enddo
 
+! вычисление матрицы A
 do k = 1,N
     do l = 1,N
 
@@ -35,12 +45,7 @@ do k = 1,N
     enddo
 enddo
 
-! goto 20
-
-!
-!  A^T * A + alpha * E
-!
-
+!  A^T * A 
 do i = 1,N*N
     do j = 1, N*N
         ATA(i,j) = 0
@@ -50,10 +55,7 @@ do i = 1,N*N
     enddo
 enddo
 
-!
 !  A^T*b
-!
-
 !do i = 1,N*N
     !ATAB(i) = 0
     !do j = 1,N*N
@@ -61,8 +63,7 @@ enddo
     !enddo
 !enddo
 
-! собств значения
-
+! maxL иницилизация
 norm = 1
 do i = 1,N*N
     if (i .eq. 1) then
@@ -70,9 +71,9 @@ do i = 1,N*N
     else
         XPrev(i) = 0
     endif
-    ZPrev(i) = 0
 enddo 
 
+! maxL счет
 open(6, FILE='maxL.txt')
 k = 0
 do while (norm > eps)
@@ -104,8 +105,11 @@ do while (norm > eps)
     k = k + 1
 enddo
 
-WRITE(*, *) maxL
 
+! решение, инициализация
+do i = 1,N*N
+    ZPrev(i) = 0
+enddo 
 
 !
 !      считаем z
@@ -123,11 +127,12 @@ WRITE(*, *) maxL
 !enddo
 
 
-20 open(5, FILE='A.txt')
-do i = 1,10
-    write(5, 10) (A(i, j), j = 1,10)
-    10     FORMAT(10F10.7, ' ')
-enddo
+! вывод матрицы A.txt
+!20 open(5, FILE='A.txt')
+!do i = 1,10
+!    write(5, 10) (A(i, j), j = 1,10)
+!    10     FORMAT(10F10.7, ' ')
+!enddo
 
 end
 

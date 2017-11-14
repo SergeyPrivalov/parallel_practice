@@ -24,7 +24,7 @@ do k = 1,N
 
         do i = 1,N
             do j = 1,N
-                A((l-1)*N+k, (i-1)*N+j) = &
+                A((k-1)*N+l, (i-1)*N+j) = &
                 1/( (X(i, j) - X(k,l)) ** 2 + (Y(i,j) - Y(k,l)) ** 2 + H1(i,j) ** 2 ) ** 0.5 - &
                 1/( (X(i, j) - X(k,l)) ** 2 + (Y(i,j) - Y(k,l)) ** 2 + H2(i,j) ** 2 ) ** 0.5
                 
@@ -35,6 +35,7 @@ do k = 1,N
     enddo
 enddo
 
+! goto 20
 
 !
 !  A^T * A
@@ -73,7 +74,7 @@ do while (norm > eps)
     do i = 1, N*N
         YCur(i) = 0
         do j =1, N*N
-            YCur(i) = YCur(i) + ATA(i,j) * XPrev(j)
+            YCur(i) = YCur(i) + A(i,j) * XPrev(j)
         enddo
         norm = norm + YCur(i)**2
     enddo
@@ -93,17 +94,17 @@ do while (norm > eps)
     do i = 1, N*N
         XPrev(i) = XNext(i)
     enddo
-    write(*,*) k, maxL, norm
+    write(6,*) k, maxL, norm
     k = k + 1
 enddo
 
 WRITE(*, *) maxL
 
 
-open(5, FILE='A.txt')
+20 open(5, FILE='A.txt')
 do i = 1,10
     write(5, 10) (A(i, j), j = 1,10)
-    10     FORMAT(10F15.12, ' ')
+    10     FORMAT(10F10.7, ' ')
 enddo
 
 end

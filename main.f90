@@ -47,6 +47,14 @@ do k = 1,N
 enddo
 write(*,*) "calced A"
 
+! вывод матрицы A.txt
+20 open(5, FILE='A.txt')
+do i = 1, N*N
+    write(5, 10) (A(i, j), j = 1,N*N)
+    10     FORMAT(10F10.7, ' ')
+enddo
+
+
 !  A^T * A 
 do i = 1,N*N
     do j = 1, N*N
@@ -182,13 +190,6 @@ do i = 1,10
     write(5, 10) (A(i, j), j = 1,10)
     10     FORMAT(10F10.7, ' ')
 enddo
-
-! вывод матрицы A.txt
-!20 open(5, FILE='A.txt')
-!do i = 1,10
-!    write(5, 10) (A(i, j), j = 1,10)
-!    10     FORMAT(10F10.7, ' ')
-!enddo
 
 end
 

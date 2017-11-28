@@ -1,17 +1,17 @@
 program primal
 implicit none
 
-integer i,j,k,l,N,maxX,minX,step
+integer i,j,k,l,N,maxX,minX
 
-parameter (N=100)
+parameter (N=50)
 double precision H1(N*N), H2(N*N), F(N*N), X(N), Y(N), aa, bb, G, dx, dy, A(N*N, N*N)
 double precision XPrev(N*N), XNext(N*N), norm, eps, YCur(N*N), maxL, ZNext(N*N), ZPrev(N*N), normF
-double precision nevyaz, az, alpha
-parameter (G = 6.67408, eps = 0.001, alpha = 0.1)
+double precision nevyaz, az, alpha, step
+parameter (G = 0.00667408, eps = 0.001, alpha = 0.0001)
 
-minX = -200
-maxX = -2
-step = 2
+minX = 0
+maxX = 10000
+step = 204
 
 do i = 1, N
     X(i) = minX + step * (i-1)
@@ -22,17 +22,20 @@ dx = ABS(X(N) - X(1)) / (N - 1)
 dy = ABS(Y(N) - Y(1)) / (N - 1)
 write (*, *) dx, dy
 
-open(10, FILE="data/H1_100x100.dat")
+! open(10, FILE="data/H1_100x100.dat")
 do i = 1,N*N
-    READ(10, *) aa, bb, H1(i)
+    ! READ(10, *) aa, bb, H1(i)
+    H1(i) = 1000
 enddo
 
-open(20, FILE="data/H2_100x100.dat")
+! open(20, FILE="data/H2_100x100.dat")
 do i = 1,N*N
-    READ(20, *) aa, bb, H2(i)
+    ! READ(20, *) aa, bb, H2(i)
+    H2(i) = 1500
 enddo
 
-open(30, FILE="data/field2_100x100.dat")
+! open(30, FILE="data/field2_100x100.dat")
+open(30, FILE="f_1sq.dat")
 do i = 1,N*N
     READ(30, *) aa, bb, F(i)
 enddo
@@ -177,8 +180,10 @@ enddo
 write(*,*) "calculated z"
 
 open(11, FILE='z.txt')
-do k = 1,N*N
-    write(11,*) X(k), Y(k), ZNext(k)
+do k = 1,N 
+    do l = 1,N
+        write(11,*) X(l), Y(k), ZNext((l-1)*N+k)
+    enddo
 enddo
 
 

@@ -4,8 +4,8 @@ implicit none
 integer i,j,k,l,N,maxX,minX
 
 parameter (N=50)
-double precision H1(N*N), H2(N*N), F(N*N), X(N), Y(N), aa, bb, G, dx, dy, A(N*N, N*N)
-double precision XPrev(N*N), XNext(N*N), norm, eps, YCur(N*N), maxL, ZNext(N*N), ZPrev(N*N), normF
+double precision H1(N*N), H2(N*N), F(N*N), X(N), Y(N), aa, bb, G, dx, dy, A(N*N, N*N), ATA(N*N, N*N), ATB(N*N)
+double precision XPrev(N*N), XNext(N*N), norm, eps, YCur(N*N), maxL, ZNext(N*N), ZPrev(N*N), normATB
 double precision nevyaz, az, alpha, step
 parameter (G = 0.00667408, eps = 0.001, alpha = 0.0001)
 
@@ -40,14 +40,6 @@ do i = 1,N*N
     READ(30, *) aa, bb, F(i)
 enddo
 WRITE(*,*) "Data read"
-
-!  norm b
-normF = 0
-do k = 1,N*N
-    normF = normF + F(k)**2
-enddo
-normF = sqrt(normF)
-write(*,*) "calculated normF", normF
 
 
 ! X(l), Y(k)
@@ -137,11 +129,36 @@ enddo
 !     az = az - F(i)
 !     nevyaz = nevyaz + az*az
 ! enddo
-! nevyaz = sqrt(nevyaz) / normF
+! nevyaz = sqrt(nevyaz) / normATB
 ! write(*,*) nevyaz
 !
 !      считаем z
 !
+
+
+write(*,*) "calculating ATA and ATB"
+do i = 1,N*N
+	ATB(i) = 0
+	do j = 1,N*N
+		ATA(i,j) = 0
+		ATB(i) = ATB(i) + A(j,i)*F(j)
+		do k = 1,N*N
+			ATA(i,j) = ATA(i,j) + A(i,k)*A(k,j)
+		enddo
+	enddo
+enddo
+write(*,*) "calculated ATA and ATB"
+
+
+!  norm b
+normATB = 0
+do k = 1,N*N
+    normATB = normATB + ATB(k)**2
+enddo
+normATB = sqrt(normATB)
+write(*,*) "calculated normATB", normATB
+
+write(*,*) "end calculated ATA"
 open(99, FILE='nevyaz.txt')
 nevyaz = 1
 k = 0
@@ -150,25 +167,25 @@ do while (nevyaz > eps)
         ZNext(i) = 0
         do j = 1,N*N
             if (i .eq. j) then
-                ZNext(i) = ZNext(i) + (A(i,j) + alpha)*ZPrev(j)
+                ZNext(i) = ZNext(i) + (ATA(i,j) + alpha)*ZPrev(j)
             else
-                ZNext(i) = ZNext(i) + A(i,j) * ZPrev(j)
+                ZNext(i) = ZNext(i) + ATA(i,j) * ZPrev(j)
             endif
         enddo
-        ZNext(i) = ZPrev(i) - (ZNext(i) - F(i)) / (maxL + 0.5)
+        ZNext(i) = ZPrev(i) - (ZNext(i) - ATB(i)) / (maxL + 0.5)
     enddo
 
     nevyaz = 0
     do i = 1,N*N
         az = 0
         do j = 1,N*N
-            az = az + A(i,j) * ZPrev(j)
+            az = az + ATA(i,j) * ZPrev(j)
         enddo
-        az = az - F(i)
+        az = az - ATB(i)
         nevyaz = nevyaz + az*az
     enddo
 
-    nevyaz = sqrt(nevyaz) / normF
+    nevyaz = sqrt(nevyaz) / normATB
     
     write(*,*) k, nevyaz
     

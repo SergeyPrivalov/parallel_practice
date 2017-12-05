@@ -1,195 +1,182 @@
 program main
-
-! константы
-real cf, eps
-parameter (cf = 0.00667, eps = 0.001)
-parameter (N=50)
-parameter (dx = 204, dy = 204)
-
-! входные данные
-real A(N*N, N*N), H1(N, N), H2(N, N), B(N, N), X(N, N), Y(N, N)
-
-! вспомогательные матрицы
-real ATA(N*N, N*N), ATB(N*N)
-
-! для счета maxL 
-real XPrev(N*N), XNext(N*N), YCur(N*N), norm, maxL
-
-! для метода
-real ZNext(N*N), ZPrev(N*N), alpha, az, nevyaz, normB
-! коэфициент регуляризации
-alpha = 0.01
-
-! input
-open(4, FILE="data.txt")
-do i = 1,N
-    do j = 1,N
-        READ(4,*) X(i,j), Y(i,j), H1(i,j), H2(i,j), B(i,j)
-    enddo
-enddo
-write(*,*) "Readed data"
-
-! вычисление матрицы A
-do k = 1,N
-    do l = 1,N
-
-        do i = 1,N
-            do j = 1,N
-                A((k-1)*N+l, (i-1)*N+j) = &
-                1/( (X(i, j) - X(k,l)) ** 2 + (Y(i,j) - Y(k,l)) ** 2 + H1(i,j) ** 2 ) ** 0.5 - &
-                1/( (X(i, j) - X(k,l)) ** 2 + (Y(i,j) - Y(k,l)) ** 2 + H2(i,j) ** 2 ) ** 0.5
-                
-                A((l-1)*N+k, (i-1)*N+j) = A((l-1)*N+k, (i-1)*N+j) * dx * dy * cf
-             enddo
+    implicit none
+    
+    integer N, N2, i, j
+    parameter(N = 50, N2 = N**2)
+    
+    double precision  X(N), Y(N),  H1(N2), H2(N2), B(N2), A(N2, N2), Z(N2)
+    
+    open(30, FILE="f_1sq.dat")
+    do i = 1,N
+        do j = 1,N
+            read(30, *) X(j), Y(i), B((i-1)*N + j)
         enddo
+    enddo
+
+    open(50, FILE="hh1.dat")
+    do i = 1,N
+        do j = 1,N
+            read(50, *) X(i), Y(j), H1((j-1)*N + i)
+        enddo
+    enddo
+
+    open(60, FILE="hh2.dat")
+    do i = 1,N
+        do j = 1,N
+            read(60, *) X(i), Y(j), H2((j-1)*N + i)
+        enddo
+    enddo
+    CALL myLog('[OK] Data readed')
         
-    enddo
-enddo
-write(*,*) "calced A"
-
-! вывод матрицы A.txt
-20 open(5, FILE='A.txt')
-do i = 1, N*N
-    write(5, 10) (A(i, j), j = 1,N*N)
-    10     FORMAT(10F10.7, ' ')
-enddo
-
-
-!  A^T * A 
-do i = 1,N*N
-    do j = 1, N*N
-        ATA(i,j) = 0
-        do k = 1, N*N
-            ATA(i,j) = ATA(i,j) + A(k,i)*A(k,j)
+    A = evalA(X, Y, H1, H2, N)
+    CALL myLog("[OK] A")
+        
+    Z = withRegular(A, B, N2)
+    CALL myLog("[OK] Z")
+     
+    open(40, FILE='Z.txt')
+    do i = 1,N 
+        do j = 1,N
+            write(40,*) X(j), Y(i), Z((i-1)*N+j)
         enddo
-    enddo
-enddo
-write(*,*) "calced A^T*A"
-
-!  A^T*b
-do k = 1,N
-    do l = 1,N
-        ATB((l-1)*N+k) = 0
-        do i = 1,N
-            do j = 1,N
-                ATB((l-1)*N+k) = ATB((l-1)*N+k) + A((i-1)*N+j,(l-1)*N+k)*B(i, j)
+    enddo 
+    CALL myLog("[END] Z.txt written")
+    
+    contains
+    
+        function evalA(X, Y, H1, H2, N)
+            double precision :: X(N), Y(N), H1(N**2), H2(N**2)
+            integer N
+            double precision, dimension(N**2, N**2):: evalA
+            
+            integer i, j, k, l, ai, aj
+            double precision  A(N**2,N**2), G, dx, dy
+            parameter (G = 0.00667408)
+            
+            dx = X(2) - X(1)
+            dy = Y(2) - Y(1)
+            
+            do k = 1,N; do l = 1,N
+                do i = 1,N; do j = 1,N
+                    ai = (l-1)*N + k
+                    aj = (i-1)*N + j
+                    A(ai, aj) = &
+                        1/sqrt( (X(j) - X(l)) ** 2 + (Y(i) - Y(k)) ** 2 + H1(aj) ** 2 ) - &
+                        1/sqrt( (X(j) - X(l)) ** 2 + (Y(i) - Y(k)) ** 2 + H2(aj) ** 2 )
+                        
+                    A(ai, aj) = A(ai, aj) * dx * dy * G
+                enddo; enddo
+            enddo; enddo
+            
+            evalA = A(:, :)
+        end function evalA
+    
+    
+        double precision  function maxL(A, N)
+            double precision:: A(:, :)
+            integer N, i
+            
+            double precision XPrev(N), XNext(N), eps, norm
+            parameter(eps = 0.001)
+            
+            XPrev(1) = 1
+            XPrev(2:) = 0
+            
+            norm = 1
+            do while (norm > eps)
+                XNext = matmul(A, XPrev)
+                norm = sqrt(dot_product(XNext, XNext))
+                
+                do i = 1, N
+                    XNext(i) = XNext(i) / norm
+                enddo
+                
+                norm = 0
+                do i = 1, N
+                    norm = norm + (XNext(i) - XPrev(i)) ** 2
+                enddo
+                norm = sqrt(norm)
+             
+                do i = 1, N
+                    XPrev(i) = XNext(i)
+                enddo
             enddo
-        enddo
-    enddo
-enddo
-write(*,*) "calced A^T*b"
-
-
-!  norm b
-normB = 0
-do k = 1,N
-    do l = 1,N
-        normB = normB + B(k,l)**2
-    enddo
-enddo
-normB = sqrt(normB)
-write(*,*) "calced normB ", normB
-
-! maxL иницилизация
-norm = 1
-do i = 1,N*N
-    if (i .eq. 1) then
-        XPrev(i) = 1
-    else
-        XPrev(i) = 0
-    endif
-enddo 
-
-! maxL счет
-open(6, FILE='maxL.txt')
-k = 0
-do while (norm > eps)
-    norm = 0
-    do i = 1, N*N
-        YCur(i) = 0
-        do j =1, N*N
-            YCur(i) = YCur(i) + ATA(i,j) * XPrev(j)
-        enddo
-        norm = norm + YCur(i)**2
-    enddo
-    norm = sqrt(norm)
-    maxL = norm
+            
+            XNext = matmul(A, XPrev)
+            maxL = sqrt(dot_product(XNext, XNext))
+        end function maxL
     
-    do i = 1, N*N
-        XNext(i) = YCur(i) / norm
-    enddo
     
-    norm = 0
-    do i = 1, N*N
-        norm = norm + (XNext(i) - XPrev(i)) ** 2
-    enddo
-    norm = sqrt(norm)
-    
-    do i = 1, N*N
-        XPrev(i) = XNext(i)
-    enddo
-    write(6,*) k, maxL, norm
-    k = k + 1
-enddo
-write(*,*) "calced maxL"
+        function simpleIteration(A, B, N)
+            integer N
+            double precision:: A(:, :), B(:)
+            double precision, dimension(N):: simpleIteration
+            
+            integer i, j, k
+            double precision l, normB, eps, alpha, ZPrev(N), ZNext(N), diff
+            parameter(eps = 0.001, alpha = 0.0001)
+            character(len=50) message
+            
+            l = maxL(A, N)
+            write(message, *) "[OK] maxL =", l 
+            CALL myLog(message)
+            
 
+            normB = sqrt(dot_product(B, B))
+            write(message, *) "[OK] normB =", normB 
+            CALL myLog(message)
+            
+            ZPrev(:) = 0
+            diff = evalDiff(A, ZPrev, B, N) / normB
+            Print*, 0, diff
+            
+            k = 1
+            do while(diff > eps)
+                ZNext = matmul(A, ZPrev)
+                ZNext = ZNext(:) + alpha * ZPrev(:)
+                ZNext = ZPrev(:) - (ZNext(:) - B(:)) / (l + 0.5)
+                
+                diff = evalDiff(A, ZNext, B, N) / normB
+                
+                Print*, k, diff
+                ZPrev = ZNext(:)
+                k = k + 1
+            enddo
+            
+            simpleIteration = ZNext(:)
+        end function simpleIteration
 
-! решение, инициализация
-do i = 1,N*N
-    ZPrev(i) = 0
-enddo 
+        
+        double precision function evalDiff(A, Z, B, N)
+            integer N
+            double precision:: A(:, :), B(:), Z(:)
+            
+            double precision X(N)
+            X = matmul(A, Z) - B(:)
+            evalDiff = sqrt(dot_product(X,X))
+        end function evalDiff
+        
+        
+        function withRegular(A, B, N)
+            integer N
+            double precision:: A(:, :), B(:)
+            double precision, dimension(N):: withRegular
+            
+            double precision:: AT(N,N), ATA(N,N), ATB(N)
+            
+            AT = transpose(A)
+            ATA = matmul(AT, A)
+            ATB = matmul(AT, B)
+            call myLog("[OK] ATA, ATB")
+            
+            withRegular = simpleIteration(ATA, ATB, N)
+        end function withRegular
 
-!
-!      считаем z
-!
-open(7, FILE='nevayz.txt')
-nevyaz = 1
-k = 0
-do while (nevyaz > eps)
-    do i = 1,N*N
-        ZNext(i) = 0
-        do j = 1,N*N
-            if (i .eq. j) then
-                ZNext(i) = ZNext(i) + (ATA(i,j) + alpha)*ZPrev(j)
-            else
-                ZNext(i) = ZNext(i) + ATA(i,j)*ZPrev(j)
-            endif
-        enddo
-        ZNext(i) = ZPrev(i) - (ZNext(i) - ATB(i)) / maxL
-    enddo
+        SUBROUTINE myLog(message)
+            character(LEN=*):: message
 
-    nevyaz = 0
-    do i = 1,N*N
-        az = 0
-        do j = 1,N*N
-            az = az + A(i,j) * ZPrev(j)
-        enddo
-        az = az - B(MOD(i-1, N) + 1, (i-1) / N + 1)
-        nevyaz = nevyaz + az*az
-    enddo
-
-    nevyaz = sqrt(nevyaz) / normB
-    
-    write(7,*) k, nevyaz
-    
-    do i = 1, N*N
-        ZPrev(i) = ZNext(i)
-    enddo
-    k = k + 1
-enddo
-write(*,*) "calced z"
-
-open(8, FILE='z.txt')
-do k = 1,N
-    do l = 1,N
-        write(8,*) X(k,l), Y(k,l), ZNext((l-1)*N+k)
-    enddo
-enddo
-   
-do i = 1,10
-    write(5, 10) (A(i, j), j = 1,10)
-    10     FORMAT(10F10.7, ' ')
-enddo
-
-end
-
+            REAL TIME
+            call cpu_time(TIME)
+            Print*, message, time 
+        end SUBROUTINE myLog
+end program main

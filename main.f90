@@ -1,11 +1,14 @@
 program main
+    use mpi
     implicit none
     
-    integer N, N2, i, j
+    integer N, N2, i, j, err
     parameter(N = 50, N2 = N**2)
-    
     double precision  X(N), Y(N),  H1(N2), H2(N2), B(N2), A(N2, N2), Z(N2)
     
+
+    call MPI_INIT(err)
+
     open(30, FILE="f_1sq.dat")
     do i = 1,N
         do j = 1,N
@@ -28,10 +31,10 @@ program main
     enddo
     CALL myLog('[OK] Data readed')
         
-    A = evalA(X, Y, H1, H2, N)
+    CALL evalA(X, Y, H1, H2, N, A)
     CALL myLog("[OK] A")
-        
-    Z = withRegular(A, B, N2)
+
+    CALL withRegular(A, B, N2, Z)
     CALL myLog("[OK] Z")
      
     open(40, FILE='Z.txt')
@@ -42,15 +45,16 @@ program main
     enddo 
     CALL myLog("[END] Z.txt written")
     
+    call MPI_Finalize(err)
     contains
     
-        function evalA(X, Y, H1, H2, N)
+        SUBROUTINE evalA(X, Y, H1, H2, N, A)
             double precision :: X(N), Y(N), H1(N**2), H2(N**2)
             integer N
-            double precision, dimension(N**2, N**2):: evalA
+            double precision, intent(out) ::  A(N**2,N**2)
             
             integer i, j, k, l, ai, aj
-            double precision  A(N**2,N**2), G, dx, dy
+            double precision G, dx, dy
             parameter (G = 0.00667408)
             
             dx = X(2) - X(1)
@@ -68,8 +72,7 @@ program main
                 enddo; enddo
             enddo; enddo
             
-            evalA = A(:, :)
-        end function evalA
+        end SUBROUTINE evalA
     
     
         double precision  function maxL(A, N)
@@ -107,10 +110,10 @@ program main
         end function maxL
     
     
-        function simpleIteration(A, B, N)
+        SUBROUTINE simpleIteration(A, B, N, Z)
             integer N
             double precision:: A(:, :), B(:)
-            double precision, dimension(N):: simpleIteration
+            double precision, dimension(N), intent(out):: Z
             
             integer i, j, k
             double precision l, normB, eps, alpha, ZPrev(N), ZNext(N), diff
@@ -143,8 +146,8 @@ program main
                 k = k + 1
             enddo
             
-            simpleIteration = ZNext(:)
-        end function simpleIteration
+            Z = ZNext(:)
+        end SUBROUTINE simpleIteration
 
         
         double precision function evalDiff(A, Z, B, N)
@@ -157,20 +160,39 @@ program main
         end function evalDiff
         
         
-        function withRegular(A, B, N)
+        SUBROUTINE withRegular(A, B, N, Z)
             integer N
             double precision:: A(:, :), B(:)
-            double precision, dimension(N):: withRegular
+            double precision, dimension(N), intent(out):: Z
             
-            double precision:: AT(N,N), ATA(N,N), ATB(N)
+            integer i, j, k
+            double precision:: AT(2500,2500), ATA(2500,2500), ATB(2500)
             
-            AT = transpose(A)
-            ATA = matmul(AT, A)
-            ATB = matmul(AT, B)
-            call myLog("[OK] ATA, ATB")
+            do i=1,N
+                do j = 1,N
+                    AT(i,j) = A(j,i)
+                enddo
+            enddo
+            CALL myLog("[OK] AT")
+
+            do i=1,N; do j=1,N
+                ATA(i,j) = 0
+                do k=1,N
+                    ATA(i,j) = ATA(i,j) + AT(i,k) * A(k, j)
+                enddo
+            enddo; enddo
+            CALL myLog("[OK] ATA")
             
-            withRegular = simpleIteration(ATA, ATB, N)
-        end function withRegular
+            do i=1,N 
+                ATB(i) = 0
+                do k=1,N
+                    ATB(i) = ATB(i) + AT(i,k) * B(k)
+                enddo
+            enddo
+            CALL myLog("[OK] ATB")
+            
+            call simpleIteration(ATA, ATB, N, Z)
+        end SUBROUTINE withRegular
 
         SUBROUTINE myLog(message)
             character(LEN=*):: message

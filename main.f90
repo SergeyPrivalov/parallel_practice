@@ -168,6 +168,12 @@ program main
             integer i, j, k
             double precision:: AT(2500,2500), ATA(2500,2500), ATB(2500)
             
+            call MPI_Comm_rank(mpi_comm_world, rank, err)
+            call MPI_Comm_size(mpi_comm_world, nProcs, err)
+
+            nc = N/nProcs
+            nrest = mod(N,nProcs)
+
             do i=1,N
                 do j = 1,N
                     AT(i,j) = A(j,i)

@@ -4,7 +4,7 @@ program main
     
     integer N, N2, i, j, err
     parameter(N = 50, N2 = N**2)
-    double precision  X(N), Y(N),  H1(N2), H2(N2), B(N2), A(N2, N2), Z(N2)
+    double precision  X(N), Y(N), H1(N2), H2(N2), B(N2), A(N2, N2), Z(N2)
     
 
     call MPI_INIT(err)
@@ -30,7 +30,7 @@ program main
         enddo
     enddo
     CALL myLog('[OK] Data readed')
-        
+    
     CALL evalA(X, Y, H1, H2, N, A)
     CALL myLog("[OK] A")
 
@@ -50,19 +50,29 @@ program main
     
         SUBROUTINE evalA(X, Y, H1, H2, N, A)
             double precision :: X(N), Y(N), H1(N**2), H2(N**2)
-            integer N
+            integer N 
             double precision, intent(out) ::  A(N**2,N**2)
             
-            integer i, j, k, l, ai, aj
-            double precision G, dx, dy
+            integer i, j, k, l, ai, aj, h, err, rank, size
+            double precision G, dx, dy, buf(N2, N2), t1, t2, t
             parameter (G = 0.00667408)
             
+            call MPI_COMM_SIZE(MPI_COMM_WORLD, size, err)
+    		call MPI_COMM_RANK(MPI_COMM_WORLD, rank, err)
+
             dx = X(2) - X(1)
             dy = Y(2) - Y(1)
             
-            do k = 1,N; do l = 1,N
+
+            h = N / size
+
+            if (rank == 0) then
+    			t1 = MPI_WTIME()
+    		endif
+
+            do k = rank*h + 1,h + rank*h; do l = rank*h + 1,h + rank*h
+                ai = (l-1)*N + k
                 do i = 1,N; do j = 1,N
-                    ai = (l-1)*N + k
                     aj = (i-1)*N + j
                     A(ai, aj) = &
                         1/sqrt( (X(j) - X(l)) ** 2 + (Y(i) - Y(k)) ** 2 + H1(aj) ** 2 ) - &
@@ -70,8 +80,15 @@ program main
                         
                     A(ai, aj) = A(ai, aj) * dx * dy * G
                 enddo; enddo
+            	call MPI_GATHER(A(ai, 1), N, MPI_DOUBLE_PRECISION, buf, N, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, err)
             enddo; enddo
-            
+
+            if (rank == 0) then
+    			t1 = MPI_WTIME()
+    			t = t2 - t1
+    			write(*, 10) t
+    			10 format('time: ', F10.5)
+    		endif
         end SUBROUTINE evalA
     
     
@@ -165,7 +182,7 @@ program main
             double precision:: A(:, :), B(:)
             double precision, dimension(N), intent(out):: Z
             
-            integer i, j, k
+            integer i, j, k, rank, nProcs, nc, nrest
             double precision:: AT(2500,2500), ATA(2500,2500), ATB(2500)
             
             call MPI_Comm_rank(mpi_comm_world, rank, err)
